@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "Aye Chan Ko",
+    "email": "ayechan@example.com",
+    "phone": "+95912345678",
+    "avatar_url": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400",
+    "bio": "Weekend traveller. Chasing sunsets and street food.",
+    "password": "password123"
+  },
+  {
+    "id": 2,
+    "name": "Su Myat Noe",
+    "email": "sumyat@example.com",
+    "phone": "+95987654321",
+    "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400",
+    "bio": "Mountains over beaches. Always packing light.",
+    "password": "password123"
+  }
+]

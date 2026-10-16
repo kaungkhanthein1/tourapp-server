@@ -1,0 +1,6 @@
+.env
+credentials/firebase-service-account.json
+bin/
+*.exe
+*.test
+*.out

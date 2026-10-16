@@ -1,0 +1,619 @@
+basePath: /api/v1
+definitions:
+  internal_bookings.CreateRequest:
+    properties:
+      check_in:
+        type: string
+      check_out:
+        type: string
+      guests:
+        minimum: 1
+        type: integer
+      hotel_id:
+        type: integer
+      room_id:
+        type: integer
+    required:
+    - check_in
+    - check_out
+    - hotel_id
+    - room_id
+    type: object
+  internal_bookings.RescheduleRequest:
+    properties:
+      check_in:
+        type: string
+      check_out:
+        type: string
+    required:
+    - check_in
+    - check_out
+    type: object
+  internal_places.AddFavoriteRequest:
+    properties:
+      note:
+        type: string
+      place_id:
+        type: integer
+    required:
+    - place_id
+    type: object
+  internal_users.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  internal_users.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      phone:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  internal_users.UpdateRequest:
+    properties:
+      avatar_url:
+        type: string
+      bio:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: 'Travel Planning App backend — places, foods, hotels, bookings, users.
+    Discovery routes are public; favorites/bookings/users require `Authorization:
+    Bearer <FIREBASE_ID_TOKEN>` (Firebase ID token obtained by the mobile app via
+    Firebase Auth). Legacy password auth (/users/login, /users/register) is deprecated.'
+  title: Tourapp API
+  version: "3.0"
+paths:
+  /bookings:
+    get:
+      parameters:
+      - description: pending | complete | cancelled
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Booking history for the current user (Pending/Complete tabs)
+      tags:
+      - bookings
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: hotel_id, room_id, check_in, check_out
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_bookings.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Book a hotel room
+      tags:
+      - bookings
+  /bookings/{id}/cancel:
+    patch:
+      parameters:
+      - description: Booking ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cancel a pending booking
+      tags:
+      - bookings
+  /bookings/{id}/reschedule:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Booking ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: new check_in / check_out
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_bookings.RescheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reschedule a pending booking
+      tags:
+      - bookings
+  /favorites:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List favorited places for the current user
+      tags:
+      - favorites
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: place_id required
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_places.AddFavoriteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Favorite a place
+      tags:
+      - favorites
+  /favorites/{placeId}:
+    delete:
+      parameters:
+      - description: Place ID
+        in: path
+        name: placeId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove a favorite
+      tags:
+      - favorites
+  /foods:
+    get:
+      parameters:
+      - description: true for popular only
+        in: query
+        name: popular
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Food recommendations ("Foods You Should Try")
+      tags:
+      - places
+  /hotels:
+    get:
+      description: 'Supports filters: place, q; paginated via limit/offset.'
+      parameters:
+      - description: Place name
+        in: query
+        name: place
+        type: string
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - description: Max items (1-100, default 20)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List hotels ( Hotels tab)
+      tags:
+      - hotels
+  /hotels/{id}:
+    get:
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Hotel detail with facilities and rooms
+      tags:
+      - hotels
+  /hotels/{id}/rooms:
+    get:
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Rooms with MMK pricing
+      tags:
+      - hotels
+  /places:
+    get:
+      description: 'Supports filters: category, q (search), popular, trending; paginated
+        via limit/offset.'
+      parameters:
+      - description: Category name
+        in: query
+        name: category
+        type: string
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      - description: true|false
+        in: query
+        name: popular
+        type: string
+      - description: true|false
+        in: query
+        name: trending
+        type: string
+      - description: Max items (1-100, default 20)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List places (Explore)
+      tags:
+      - places
+  /places/{id}:
+    get:
+      parameters:
+      - description: Place ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Place detail with gallery
+      tags:
+      - places
+  /places/categories:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Explore category chips
+      tags:
+      - places
+  /places/trending:
+    get:
+      parameters:
+      - description: Max items
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Trending places ("Hot Right Now")
+      tags:
+      - places
+  /users/login:
+    post:
+      consumes:
+      - application/json
+      deprecated: true
+      parameters:
+      - description: login payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_users.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Login and receive a JWT
+      tags:
+      - auth
+  /users/me:
+    put:
+      consumes:
+      - application/json
+      description: Partially updates the caller's profile. avatar_url must be the
+        public HTTPS URL of an image uploaded client-side to Supabase Storage; the
+        server never receives file bytes.
+      parameters:
+      - description: Fields to update (all optional)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_users.UpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update the authenticated user's profile
+      tags:
+      - users
+  /users/register:
+    post:
+      consumes:
+      - application/json
+      deprecated: true
+      parameters:
+      - description: registration payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_users.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register a new user
+      tags:
+      - auth
+  /users/sync:
+    post:
+      description: 'Idempotent: upserts by firebase_uid (claiming legacy password-era
+        rows by email) and returns the local profile. Called by the mobile app after
+        email verification.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sync the verified Firebase identity into the users table
+      tags:
+      - auth
+securityDefinitions:
+  BearerAuth:
+    description: 'Firebase ID token: `Bearer <FIREBASE_ID_TOKEN>` (verify via signInWithPassword/getIdToken
+      on the client).'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "user_id": 1,
+    "place_id": 3,
+    "note": "Sagrada Familia bucket list"
+  },
+  {
+    "id": 2,
+    "user_id": 1,
+    "place_id": 9,
+    "note": "Beach trip next summer"
+  },
+  {
+    "id": 3,
+    "user_id": 1,
+    "place_id": 12,
+    "note": "Cherry blossom season"
+  },
+  {
+    "id": 4,
+    "user_id": 2,
+    "place_id": 2,
+    "note": "Eiffel Tower at night"
+  }
+]

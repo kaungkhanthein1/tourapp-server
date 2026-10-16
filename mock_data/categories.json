@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "name": "Cities",
+    "icon": "city",
+    "sort_order": 1
+  },
+  {
+    "id": 2,
+    "name": "Architecture",
+    "icon": "landmark",
+    "sort_order": 2
+  },
+  {
+    "id": 3,
+    "name": "Foods",
+    "icon": "utensils",
+    "sort_order": 3
+  },
+  {
+    "id": 4,
+    "name": "Parks",
+    "icon": "trees",
+    "sort_order": 4
+  },
+  {
+    "id": 5,
+    "name": "Hills",
+    "icon": "mountain",
+    "sort_order": 5
+  },
+  {
+    "id": 6,
+    "name": "Beaches",
+    "icon": "umbrella",
+    "sort_order": 6
+  }
+]

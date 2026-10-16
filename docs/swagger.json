@@ -1,0 +1,931 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Travel Planning App backend — places, foods, hotels, bookings, users. Discovery routes are public; favorites/bookings/users require `Authorization: Bearer \u003cFIREBASE_ID_TOKEN\u003e` (Firebase ID token obtained by the mobile app via Firebase Auth). Legacy password auth (/users/login, /users/register) is deprecated.",
+        "title": "Tourapp API",
+        "contact": {},
+        "version": "3.0"
+    },
+    "basePath": "/api/v1",
+    "paths": {
+        "/bookings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "Booking history for the current user (Pending/Complete tabs)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "pending | complete | cancelled",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "Book a hotel room",
+                "parameters": [
+                    {
+                        "description": "hotel_id, room_id, check_in, check_out",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_bookings.CreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/bookings/{id}/cancel": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "Cancel a pending booking",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Booking ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/bookings/{id}/reschedule": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bookings"
+                ],
+                "summary": "Reschedule a pending booking",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Booking ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "new check_in / check_out",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_bookings.RescheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/favorites": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "favorites"
+                ],
+                "summary": "List favorited places for the current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "favorites"
+                ],
+                "summary": "Favorite a place",
+                "parameters": [
+                    {
+                        "description": "place_id required",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_places.AddFavoriteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/favorites/{placeId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "favorites"
+                ],
+                "summary": "Remove a favorite",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Place ID",
+                        "name": "placeId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/foods": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "places"
+                ],
+                "summary": "Food recommendations (\"Foods You Should Try\")",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "true for popular only",
+                        "name": "popular",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/hotels": {
+            "get": {
+                "description": "Supports filters: place, q; paginated via limit/offset.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hotels"
+                ],
+                "summary": "List hotels ( Hotels tab)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Place name",
+                        "name": "place",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (1-100, default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/hotels/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hotels"
+                ],
+                "summary": "Hotel detail with facilities and rooms",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/hotels/{id}/rooms": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hotels"
+                ],
+                "summary": "Rooms with MMK pricing",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/places": {
+            "get": {
+                "description": "Supports filters: category, q (search), popular, trending; paginated via limit/offset.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "places"
+                ],
+                "summary": "List places (Explore)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category name",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "true|false",
+                        "name": "popular",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "true|false",
+                        "name": "trending",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (1-100, default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/places/categories": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "places"
+                ],
+                "summary": "Explore category chips",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/places/trending": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "places"
+                ],
+                "summary": "Trending places (\"Hot Right Now\")",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Max items",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/places/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "places"
+                ],
+                "summary": "Place detail with gallery",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Place ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/users/login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login and receive a JWT",
+                "deprecated": true,
+                "parameters": [
+                    {
+                        "description": "login payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_users.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partially updates the caller's profile. avatar_url must be the public HTTPS URL of an image uploaded client-side to Supabase Storage; the server never receives file bytes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update the authenticated user's profile",
+                "parameters": [
+                    {
+                        "description": "Fields to update (all optional)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_users.UpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/users/register": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Register a new user",
+                "deprecated": true,
+                "parameters": [
+                    {
+                        "description": "registration payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_users.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/users/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Idempotent: upserts by firebase_uid (claiming legacy password-era rows by email) and returns the local profile. Called by the mobile app after email verification.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Sync the verified Firebase identity into the users table",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "internal_bookings.CreateRequest": {
+            "type": "object",
+            "required": [
+                "check_in",
+                "check_out",
+                "hotel_id",
+                "room_id"
+            ],
+            "properties": {
+                "check_in": {
+                    "type": "string"
+                },
+                "check_out": {
+                    "type": "string"
+                },
+                "guests": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "hotel_id": {
+                    "type": "integer"
+                },
+                "room_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_bookings.RescheduleRequest": {
+            "type": "object",
+            "required": [
+                "check_in",
+                "check_out"
+            ],
+            "properties": {
+                "check_in": {
+                    "type": "string"
+                },
+                "check_out": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_places.AddFavoriteRequest": {
+            "type": "object",
+            "required": [
+                "place_id"
+            ],
+            "properties": {
+                "note": {
+                    "type": "string"
+                },
+                "place_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_users.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_users.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_users.UpdateRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Firebase ID token: `Bearer \u003cFIREBASE_ID_TOKEN\u003e` (verify via signInWithPassword/getIdToken on the client).",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

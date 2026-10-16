@@ -1,0 +1,66 @@
+[
+  {
+    "id": 1,
+    "name": "Tapas",
+    "country": "Spain",
+    "image_url": "https://images.unsplash.com/photo-1559847844-5315695dadae?w=800",
+    "is_popular": true,
+    "description": "Small savoury dishes, typically served with drinks in Spanish bars — from patatas bravas to jamón ibérico. A social way to eat like a local."
+  },
+  {
+    "id": 2,
+    "name": "Fresh Spring Rolls",
+    "country": "Vietnam",
+    "image_url": "https://images.unsplash.com/photo-1553163147-622ab57be1c7?w=800",
+    "is_popular": true,
+    "description": "Rice-paper rolls stuffed with herbs, vermicelli and prawns, served fresh with a peanut dipping sauce. Light, fragrant and endlessly repeatable."
+  },
+  {
+    "id": 3,
+    "name": "Sushi",
+    "country": "Japan",
+    "image_url": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800",
+    "is_popular": true,
+    "description": "Vinegared rice topped or rolled with fresh seafood and vegetables — the definitive bite of Japanese cuisine."
+  },
+  {
+    "id": 4,
+    "name": "Pizza Napoletana",
+    "country": "Italy",
+    "image_url": "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800",
+    "is_popular": true,
+    "description": "Thin-crust wood-fired pizza from Naples with San Marzano tomatoes, mozzarella and fresh basil."
+  },
+  {
+    "id": 5,
+    "name": "Pad Thai",
+    "country": "Thailand",
+    "image_url": "https://images.unsplash.com/photo-1559314809-0d155014e29e?w=800",
+    "is_popular": true,
+    "description": "Stir-fried rice noodles with egg, tofu, shrimp and tamarind sauce — sweet, sour and salty in one wok."
+  },
+  {
+    "id": 6,
+    "name": "Croissant",
+    "country": "France",
+    "image_url": "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800",
+    "is_popular": false,
+    "description": "Buttery, flaky viennoiserie — the essential companion to a Parisian café breakfast."
+  },
+  {
+    "id": 7,
+    "name": "Biryani",
+    "country": "India",
+    "image_url": "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800",
+    "is_popular": false,
+    "description": "Fragrant basmati rice layered with spiced meat or vegetables — a celebratory one-pot feast."
+  },
+  {
+    "id": 8,
+    "name": "Mohinga",
+    "country": "Myanmar",
+    "image_url": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800",
+    "is_popular": true,
+    "description": "Myanmar's national dish — a comforting fish-based noodle soup with lemongrass, ginger and crispy fritters."
+  }
+]

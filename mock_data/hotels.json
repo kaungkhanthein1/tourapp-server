@@ -1,0 +1,146 @@
+[
+  {
+    "id": 1,
+    "name": "Sofia Hotel Pere IV",
+    "place": "Barcelona",
+    "country": "Spain",
+    "region": "Catalonia region",
+    "image_url": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800",
+    "gallery_urls": [
+      "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800",
+      "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800",
+      "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800"
+    ],
+    "rating": 4.7,
+    "facilities": ["Restaurant", "Pool", "Bar", "Fitness Hall", "Parking", "Services"],
+    "rooms": [
+      {
+        "name": "Deluxe Double Room",
+        "price_mmk": 385314,
+        "capacity": 2,
+        "image_url": "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800",
+        "description": "Bright double room with city views, king bed and rain shower."
+      },
+      {
+        "name": "Deluxe Family Room with SPA Access",
+        "price_mmk": 565895,
+        "capacity": 4,
+        "image_url": "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800",
+        "description": "Spacious family room with lounge area and full SPA access."
+      },
+      {
+        "name": "Superior Twin",
+        "price_mmk": 274650,
+        "capacity": 2,
+        "image_url": "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800",
+        "description": "Twin beds, workspace and balcony overlooking Pere IV street."
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Qdos Hotel",
+    "place": "Barcelona",
+    "country": "Spain",
+    "region": "Catalonia region",
+    "image_url": "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800",
+    "gallery_urls": [
+      "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800",
+      "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800"
+    ],
+    "rating": 4.5,
+    "facilities": ["Restaurant", "Bar", "Parking", "Services"],
+    "rooms": [
+      {
+        "name": "Deluxe Double Room with Balcony",
+        "price_mmk": 1014567,
+        "capacity": 2,
+        "image_url": "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=800",
+        "description": "Corner suite with panoramic balcony over the old town."
+      },
+      {
+        "name": "Classic Double Room",
+        "price_mmk": 320000,
+        "capacity": 2,
+        "image_url": "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800",
+        "description": "Cozy double room with warm tones and walk-in shower."
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "Barcelona Palace Apartments",
+    "place": "Barcelona",
+    "country": "Spain",
+    "region": "Catalonia region",
+    "image_url": "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
+    "gallery_urls": [
+      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800",
+      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800"
+    ],
+    "rating": 4.6,
+    "facilities": ["Restaurant", "Pool", "Parking", "Services"],
+    "rooms": [
+      {
+        "name": "Superior Twin",
+        "price_mmk": 74650,
+        "capacity": 2,
+        "image_url": "https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?w=800",
+        "description": "Compact twin room in the heart of Eixample."
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Sakura Grand Hotel",
+    "place": "Tokyo",
+    "country": "Japan",
+    "region": "Kantō region",
+    "image_url": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800",
+    "gallery_urls": [
+      "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800",
+      "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800"
+    ],
+    "rating": 4.8,
+    "facilities": ["Restaurant", "Pool", "Bar", "Fitness Hall", "Services"],
+    "rooms": [
+      {
+        "name": "Superior Twin",
+        "price_mmk": 74650,
+        "capacity": 2,
+        "image_url": "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800",
+        "description": "Minimalist twin room with shoji screens and city skyline view."
+      },
+      {
+        "name": "Deluxe Double Room",
+        "price_mmk": 385314,
+        "capacity": 2,
+        "image_url": "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800",
+        "description": "King bed, tea station and panoramic Shinjuku window."
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Rive Gauche Hôtel",
+    "place": "Paris",
+    "country": "France",
+    "region": "Île-de-France",
+    "image_url": "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800",
+    "gallery_urls": [
+      "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800",
+      "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800"
+    ],
+    "rating": 4.7,
+    "facilities": ["Restaurant", "Bar", "Parking", "Services"],
+    "rooms": [
+      {
+        "name": "Deluxe Double Room with Balcony",
+        "price_mmk": 1014567,
+        "capacity": 2,
+        "image_url": "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=800",
+        "description": "Balcony room facing the Seine with classic Parisian decor."
+      }
+    ]
+  }
+]
