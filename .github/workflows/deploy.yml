@@ -11,9 +11,18 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        run: |
+          CGO_ENABLED=0 go build -o bin/server ./cmd/server
+
       - name: Generate Deployment Package
         run: |
-          zip -r deploy.zip . -x "*.git*" -x "*.qodo*"
+          zip -r deploy.zip . -x "*.git*" -x "*.qodo*" -x "*.yml"
 
       - name: Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v22
