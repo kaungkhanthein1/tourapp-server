@@ -4,6 +4,7 @@ package firebase
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strings"
@@ -89,6 +90,13 @@ func (c *Client) VerifyIDToken(ctx context.Context, idToken string) (*Identity, 
 func credentialOptions(creds Credentials) ([]option.ClientOption, error) {
 	raw := strings.TrimSpace(creds.ServiceAccountJSON)
 	if raw != "" {
+		if encoded, ok := strings.CutPrefix(raw, "base64:"); ok {
+			decoded, err := base64.StdEncoding.DecodeString(encoded)
+			if err != nil {
+				return nil, fmt.Errorf("firebase: FIREBASE_SERVICE_ACCOUNT_JSON must contain valid base64-encoded service-account JSON")
+			}
+			raw = string(decoded)
+		}
 		// Accept raw JSON inline, or a path for operational convenience.
 		if strings.HasPrefix(raw, "{") {
 			return []option.ClientOption{option.WithCredentialsJSON([]byte(raw))}, nil
