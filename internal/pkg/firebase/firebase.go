@@ -39,12 +39,15 @@ func Init(ctx context.Context, creds Credentials) (*Client, error) {
 
 	app, err := firebase.NewApp(ctx, nil, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("firebase: initialize app: %w", err)
+		// Avoid logging credential parser errors, which can contain key material.
+		return nil, fmt.Errorf("firebase: initialize app: credentials could not be validated (details redacted)")
 	}
 
 	authClient, err := app.Auth(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("firebase: initialize auth client: %w", err)
+		// Some Google credential errors include the parsed private key in their
+		// message. Do not propagate that error into application logs.
+		return nil, fmt.Errorf("firebase: initialize auth client: credentials could not be validated (details redacted)")
 	}
 
 	return &Client{App: app, Auth: authClient}, nil
@@ -106,10 +109,10 @@ func credentialOptions(creds Credentials) ([]option.ClientOption, error) {
 func fileOption(path, envName string) ([]option.ClientOption, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return nil, fmt.Errorf("firebase: %s points at %q: %w", envName, path, err)
+		return nil, fmt.Errorf("firebase: %s must be a readable path to a service-account JSON file", envName)
 	}
 	if info.IsDir() {
-		return nil, fmt.Errorf("firebase: %s points at %q, which is a directory (expected a JSON file)", envName, path)
+		return nil, fmt.Errorf("firebase: %s must point to a service-account JSON file, not a directory", envName)
 	}
 	return []option.ClientOption{option.WithCredentialsFile(path)}, nil
 }

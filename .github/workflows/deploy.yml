@@ -22,7 +22,7 @@ jobs:
 
       - name: Generate Deployment Package
         run: |
-          zip -r deploy.zip . -x "*.git*" -x "*.qodo*" -x "*.yml"
+          zip -r deploy.zip . -x "*.git*" -x "*.qodo*" -x "*.yml" -x ".env" -x "*/.env" -x "credentials/*" -x "credentials/**"
 
       - name: Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v22
@@ -32,5 +32,6 @@ jobs:
           application_name: tourapp-server
           environment_name: tourapp-server-env
           version_label: "version-${{ github.sha }}"
+          use_existing_version_if_available: true
           region: ap-southeast-2
           deployment_package: deploy.zip
