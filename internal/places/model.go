@@ -7,19 +7,23 @@ import (
 )
 
 // Place is a tourist attraction shown on Home/Explore/Detail screens.
+// Lat/Lon carry the provider's coordinates as cached at seed time
+// (0,0 means unknown — e.g. pre-coordinate seed rows).
 type Place struct {
-	ID           int64     `json:"id"`
-	Name         string    `json:"name"`
-	Country      string    `json:"country"`
-	Region       string    `json:"region,omitempty"`
-	Category     string    `json:"category"`
-	ImageURL     string    `json:"image_url"`
-	GalleryURLs  []string  `json:"gallery_urls"`
-	Rating       float64   `json:"rating"`
-	IsPopular    bool      `json:"is_popular"`
-	IsTrending   bool      `json:"is_trending"`
-	Description  string    `json:"description,omitempty"`
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	ID          int64     `json:"id"`
+	Name        string    `json:"name"`
+	Country     string    `json:"country"`
+	Region      string    `json:"region,omitempty"`
+	Category    string    `json:"category"`
+	ImageURL    string    `json:"image_url"`
+	GalleryURLs []string  `json:"gallery_urls"`
+	Rating      float64   `json:"rating"`
+	IsPopular   bool      `json:"is_popular"`
+	IsTrending  bool      `json:"is_trending"`
+	Description string    `json:"description,omitempty"`
+	Lat         float64   `json:"lat"`
+	Lon         float64   `json:"lon"`
+	CreatedAt   time.Time `json:"created_at,omitempty"`
 }
 
 // Category is an Explore-page filter chip.

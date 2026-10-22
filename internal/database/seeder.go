@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS places (
 	is_popular   BOOLEAN NOT NULL DEFAULT false,
 	is_trending  BOOLEAN NOT NULL DEFAULT false,
 	description  TEXT,
+	source       TEXT NOT NULL DEFAULT 'seed',
 	created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_places_category ON places (category);
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS foods (
 	image_url   TEXT NOT NULL,
 	is_popular  BOOLEAN NOT NULL DEFAULT false,
 	description TEXT,
+	source      TEXT NOT NULL DEFAULT 'seed',
 	created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -71,6 +73,7 @@ CREATE TABLE IF NOT EXISTS hotels (
 	rating       REAL NOT NULL DEFAULT 0,
 	facilities   TEXT[] NOT NULL DEFAULT '{}',
 	place_id     BIGINT REFERENCES places(id) ON DELETE SET NULL,
+	source       TEXT NOT NULL DEFAULT 'seed',
 	created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_hotels_place ON hotels (place);
@@ -148,22 +151,50 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 		`CREATE UNIQUE INDEX IF NOT EXISTS users_firebase_uid_key ON users (firebase_uid)`); err != nil {
 		return fmt.Errorf("migrate users.firebase_uid unique: %w", err)
 	}
+	// Live-only content: list queries filter out rows whose source is
+	// 'seed' (the mock dataset) so the app only ever shows provider-cached
+	// rows; the constant DEFAULT backfills existing rows without a table
+	// rewrite. Provider cache writes set source explicitly
+	// ('openstreetmap' for places/foods/hotels).
+	if _, err := pool.Exec(ctx,
+		`ALTER TABLE places ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'seed'`); err != nil {
+		return fmt.Errorf("migrate places.source: %w", err)
+	}
+	// Coordinates for "hotels near this POI" (place detail). Existing
+	// provider-cached rows stay at 0,0 until re-cached; 0,0 is treated as
+	// "unknown" everywhere.
+	if _, err := pool.Exec(ctx,
+		`ALTER TABLE places ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION NOT NULL DEFAULT 0`); err != nil {
+		return fmt.Errorf("migrate places.lat: %w", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`ALTER TABLE places ADD COLUMN IF NOT EXISTS lon DOUBLE PRECISION NOT NULL DEFAULT 0`); err != nil {
+		return fmt.Errorf("migrate places.lon: %w", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`ALTER TABLE foods ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'seed'`); err != nil {
+		return fmt.Errorf("migrate foods.source: %w", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`ALTER TABLE hotels ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'seed'`); err != nil {
+		return fmt.Errorf("migrate hotels.source: %w", err)
+	}
 	log.Println("[db] schema up to date")
 	return nil
 }
 
 type seedPlace struct {
-	ID           int64    `json:"id"`
-	Name         string   `json:"name"`
-	Country      string   `json:"country"`
-	Region       string   `json:"region"`
-	Category     string   `json:"category"`
-	ImageURL     string   `json:"image_url"`
-	GalleryURLs  []string `json:"gallery_urls"`
-	Rating       float64  `json:"rating"`
-	IsPopular    bool     `json:"is_popular"`
-	IsTrending   bool     `json:"is_trending"`
-	Description  string   `json:"description"`
+	ID          int64    `json:"id"`
+	Name        string   `json:"name"`
+	Country     string   `json:"country"`
+	Region      string   `json:"region"`
+	Category    string   `json:"category"`
+	ImageURL    string   `json:"image_url"`
+	GalleryURLs []string `json:"gallery_urls"`
+	Rating      float64  `json:"rating"`
+	IsPopular   bool     `json:"is_popular"`
+	IsTrending  bool     `json:"is_trending"`
+	Description string   `json:"description"`
 }
 
 type seedFood struct {

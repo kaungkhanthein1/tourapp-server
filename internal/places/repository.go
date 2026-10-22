@@ -2,6 +2,7 @@ package places
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,8 +11,8 @@ import (
 )
 
 // Repository is the data-access boundary for the places domain.
-// PostgresRepository is the initial implementation; an ExternalAPIRepository
-// (Google Places / Makcorps) can be swapped in without touching service/handler.
+// PostgresRepository (Neon) is the only implementation — preset-data
+// policy: everything is seeded at bootstrap, reads never fetch.
 type Repository interface {
 	ListPlaces(ctx context.Context, f PlaceFilter) ([]Place, error)
 	CountPlaces(ctx context.Context, f PlaceFilter) (int64, error)
@@ -22,7 +23,7 @@ type Repository interface {
 	ListFavorites(ctx context.Context, userID int64) ([]Favorite, error)
 	AddFavorite(ctx context.Context, userID, placeID int64, note string) error
 	RemoveFavorite(ctx context.Context, userID, placeID int64) error
-	// InsertPlace persists an externally-sourced place (hybrid fallback cache).
+	// InsertPlace persists a provider-sourced place (seed-time cache).
 	InsertPlace(ctx context.Context, p *Place) (int64, error)
 }
 
@@ -40,7 +41,7 @@ var _ Repository = (*PostgresRepository)(nil)
 func (r *PostgresRepository) ListPlaces(ctx context.Context, f PlaceFilter) ([]Place, error) {
 	where, args := buildPlaceWhere(f)
 
-	query := "SELECT id, name, country, COALESCE(region,''), category, image_url, gallery_urls, rating, is_popular, is_trending, COALESCE(description,''), created_at FROM places" + where +
+	query := "SELECT id, name, country, COALESCE(region,''), category, image_url, gallery_urls, rating, is_popular, is_trending, COALESCE(description,''), lat, lon, created_at FROM places" + where +
 		" ORDER BY rating DESC, id ASC"
 
 	args = append(args, f.Page.Limit)
@@ -65,7 +66,7 @@ func (r *PostgresRepository) CountPlaces(ctx context.Context, f PlaceFilter) (in
 
 func buildPlaceWhere(f PlaceFilter) (string, []any) {
 	var (
-		conds []string
+		conds = []string{"source <> 'seed'"}
 		args  []any
 	)
 	if f.Category != "" {
@@ -93,12 +94,12 @@ func buildPlaceWhere(f PlaceFilter) (string, []any) {
 func (r *PostgresRepository) GetPlace(ctx context.Context, id int64) (*Place, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, name, country, COALESCE(region,''), category, image_url, gallery_urls,
-		       rating, is_popular, is_trending, COALESCE(description,''), created_at
+		       rating, is_popular, is_trending, COALESCE(description,''), lat, lon, created_at
 		FROM places WHERE id = $1`, id)
 
 	var p Place
 	if err := row.Scan(&p.ID, &p.Name, &p.Country, &p.Region, &p.Category, &p.ImageURL,
-		&p.GalleryURLs, &p.Rating, &p.IsPopular, &p.IsTrending, &p.Description, &p.CreatedAt); err != nil {
+		&p.GalleryURLs, &p.Rating, &p.IsPopular, &p.IsTrending, &p.Description, &p.Lat, &p.Lon, &p.CreatedAt); err != nil {
 		return nil, err
 	}
 	return &p, nil
@@ -108,11 +109,13 @@ func (r *PostgresRepository) ListTrending(ctx context.Context, limit int) ([]Pla
 	if limit <= 0 {
 		limit = 10
 	}
+	// Trending is the live catalog (seeded rows are hidden): newest
+	// provider-cached discoveries first.
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, name, country, COALESCE(region,''), category, image_url, gallery_urls,
-		       rating, is_popular, is_trending, COALESCE(description,''), created_at
-		FROM places WHERE is_trending = true
-		ORDER BY rating DESC, id ASC LIMIT $1`, limit)
+		       rating, is_popular, is_trending, COALESCE(description,''), lat, lon, created_at
+		FROM places WHERE source <> 'seed'
+		ORDER BY id DESC LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -141,11 +144,12 @@ func (r *PostgresRepository) ListCategories(ctx context.Context) ([]Category, er
 }
 
 func (r *PostgresRepository) ListFoods(ctx context.Context, popularOnly bool) ([]Food, error) {
-	query := `SELECT id, name, country, image_url, is_popular, COALESCE(description,'') FROM foods`
+	conds := []string{"source <> 'seed'"}
 	if popularOnly {
-		query += " WHERE is_popular = true"
+		conds = append(conds, "is_popular = true")
 	}
-	query += " ORDER BY is_popular DESC, id ASC"
+	query := `SELECT id, name, country, image_url, is_popular, COALESCE(description,'') FROM foods WHERE ` +
+		strings.Join(conds, " AND ") + " ORDER BY is_popular DESC, id ASC"
 
 	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
@@ -215,23 +219,66 @@ func (r *PostgresRepository) RemoveFavorite(ctx context.Context, userID, placeID
 }
 
 // InsertPlace caches an externally-sourced place into Neon (hybrid fallback).
+// It is an idempotent get-or-create keyed on (name, country): provider rows
+// carry source='openstreetmap' (list queries hide the seeded mock rows), and an
+// existing row is promoted when the triggering request asked for
+// popular/trending content so those filters hit the database on repeat.
 func (r *PostgresRepository) InsertPlace(ctx context.Context, p *Place) (int64, error) {
 	if p.GalleryURLs == nil {
 		p.GalleryURLs = []string{}
 	}
+
 	var id int64
-	err := r.pool.QueryRow(ctx, `
-		INSERT INTO places (name, country, region, category, image_url, gallery_urls, rating, is_popular, is_trending, description)
-		VALUES ($1,$2,NULLIF($3,''),$4,$5,$6,$7,$8,$9,NULLIF($10,''))
+	// Only provider-cached rows are reuse candidates: a hidden seed row may
+	// share the name+country (e.g. searching "Rome") — in that case fall
+	// through to the INSERT so the app gets a live twin, never mock data.
+	err := r.pool.QueryRow(ctx,
+		`SELECT id FROM places WHERE LOWER(name) = LOWER($1) AND LOWER(country) = LOWER($2) AND source <> 'seed'`,
+		p.Name, p.Country,
+	).Scan(&id)
+	if err == nil {
+		return id, r.promotePlaceFlags(ctx, id, p.IsPopular, p.IsTrending)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return 0, err
+	}
+
+	err = r.pool.QueryRow(ctx, `
+		INSERT INTO places (name, country, region, category, image_url, gallery_urls, rating, is_popular, is_trending, description, lat, lon, source)
+		VALUES ($1,$2,NULLIF($3,''),$4,$5,$6,$7,$8,$9,NULLIF($10,''),$11,$12,'openstreetmap')
 		ON CONFLICT DO NOTHING
 		RETURNING id`,
 		p.Name, p.Country, p.Region, p.Category, p.ImageURL, p.GalleryURLs,
-		p.Rating, p.IsPopular, p.IsTrending, p.Description,
+		p.Rating, p.IsPopular, p.IsTrending, p.Description, p.Lat, p.Lon,
 	).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Lost a concurrent cache race — reuse the winner's row.
+		if serr := r.pool.QueryRow(ctx,
+			`SELECT id FROM places WHERE LOWER(name) = LOWER($1) AND LOWER(country) = LOWER($2) AND source <> 'seed'`,
+			p.Name, p.Country,
+		).Scan(&id); serr != nil {
+			return 0, serr
+		}
+		return id, r.promotePlaceFlags(ctx, id, p.IsPopular, p.IsTrending)
+	}
 	if err != nil {
 		return 0, err
 	}
 	return id, nil
+}
+
+// promotePlaceFlags raises is_popular/is_trending on a cached row (never
+// lowers them): a popular/trending request bootstraps empty tables, and the
+// promotion makes the next identical request resolve from the database
+// instead of re-calling the provider.
+func (r *PostgresRepository) promotePlaceFlags(ctx context.Context, id int64, popular, trending bool) error {
+	if !popular && !trending {
+		return nil
+	}
+	_, err := r.pool.Exec(ctx,
+		`UPDATE places SET is_popular = is_popular OR $2, is_trending = is_trending OR $3 WHERE id = $1`,
+		id, popular, trending)
+	return err
 }
 
 func scanPlaces(rows pgx.Rows) ([]Place, error) {
@@ -239,7 +286,7 @@ func scanPlaces(rows pgx.Rows) ([]Place, error) {
 	for rows.Next() {
 		var p Place
 		if err := rows.Scan(&p.ID, &p.Name, &p.Country, &p.Region, &p.Category, &p.ImageURL,
-			&p.GalleryURLs, &p.Rating, &p.IsPopular, &p.IsTrending, &p.Description, &p.CreatedAt); err != nil {
+			&p.GalleryURLs, &p.Rating, &p.IsPopular, &p.IsTrending, &p.Description, &p.Lat, &p.Lon, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, p)

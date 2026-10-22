@@ -2,6 +2,7 @@ package hotels
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,14 +11,18 @@ import (
 )
 
 // Repository is the data-access boundary for hotels.
-// Swap in an external inventory API (Makcorps etc.) without touching service/handler.
+// Swap in an external inventory API without touching service/handler.
 type Repository interface {
 	ListHotels(ctx context.Context, f Filter) ([]Hotel, error)
 	CountHotels(ctx context.Context, f Filter) (int64, error)
 	GetHotel(ctx context.Context, id int64) (*Hotel, error)
 	ListRooms(ctx context.Context, hotelID int64) ([]Room, error)
-	// InsertHotel persists an externally-sourced hotel (hybrid fallback cache).
-	InsertHotel(ctx context.Context, h *Hotel) (int64, error)
+	// InsertHotel caches an externally-sourced hotel (hybrid fallback).
+	// It returns the cached row id and whether a new row was created, so
+	// the caller only seeds hotel_rooms for newly created hotels.
+	InsertHotel(ctx context.Context, h *Hotel) (id int64, created bool, err error)
+	// InsertRoom persists a room for an externally-sourced hotel.
+	InsertRoom(ctx context.Context, rm *Room) (int64, error)
 }
 
 // PostgresRepository reads Neon PostgreSQL.
@@ -60,7 +65,7 @@ func (r *PostgresRepository) CountHotels(ctx context.Context, f Filter) (int64, 
 
 func buildHotelWhere(f Filter) (string, []any) {
 	var (
-		conds []string
+		conds = []string{"source <> 'seed'"}
 		args  []any
 	)
 	if f.Place != "" {
@@ -71,27 +76,67 @@ func buildHotelWhere(f Filter) (string, []any) {
 		args = append(args, "%"+strings.ToLower(f.Query)+"%")
 		conds = append(conds, fmt.Sprintf("(LOWER(name) LIKE $%d OR LOWER(place) LIKE $%d)", len(args), len(args)))
 	}
-	if len(conds) == 0 {
-		return "", args
-	}
 	return " WHERE " + strings.Join(conds, " AND "), args
 }
 
 // InsertHotel caches an externally-sourced hotel into Neon (hybrid fallback).
-func (r *PostgresRepository) InsertHotel(ctx context.Context, h *Hotel) (int64, error) {
+// It is an idempotent get-or-create keyed on (name, place) over live rows
+// only: curated seed data is never clobbered, and a seed twin with the
+// same name gets its own live row instead of masking the cache write.
+func (r *PostgresRepository) InsertHotel(ctx context.Context, h *Hotel) (int64, bool, error) {
 	if h.GalleryURLs == nil {
 		h.GalleryURLs = []string{}
 	}
 	if h.Facilities == nil {
 		h.Facilities = []string{}
 	}
+
 	var id int64
-	err := r.pool.QueryRow(ctx, `
-		INSERT INTO hotels (name, place, country, region, image_url, gallery_urls, rating, facilities, place_id)
-		VALUES ($1,$2,$3,NULLIF($4,''),$5,$6,$7,$8,$9)
+	err := r.pool.QueryRow(ctx,
+		`SELECT id FROM hotels WHERE LOWER(name) = LOWER($1) AND LOWER(place) = LOWER($2) AND source <> 'seed'`,
+		h.Name, h.Place,
+	).Scan(&id)
+	if err == nil {
+		return id, false, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, err
+	}
+
+	err = r.pool.QueryRow(ctx, `
+		INSERT INTO hotels (name, place, country, region, image_url, gallery_urls, rating, facilities, place_id, source)
+		VALUES ($1,$2,$3,NULLIF($4,''),$5,$6,$7,$8,$9,'openstreetmap')
 		ON CONFLICT DO NOTHING
 		RETURNING id`,
 		h.Name, h.Place, h.Country, h.Region, h.ImageURL, h.GalleryURLs, h.Rating, h.Facilities, h.PlaceID,
+	).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Lost a concurrent cache race — reuse the winner's row.
+		if serr := r.pool.QueryRow(ctx,
+			`SELECT id FROM hotels WHERE LOWER(name) = LOWER($1) AND LOWER(place) = LOWER($2) AND source <> 'seed'`,
+			h.Name, h.Place,
+		).Scan(&id); serr != nil {
+			return 0, false, serr
+		}
+		return id, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return id, true, nil
+}
+
+// InsertRoom caches a room for an externally-sourced hotel into Neon.
+func (r *PostgresRepository) InsertRoom(ctx context.Context, rm *Room) (int64, error) {
+	if rm.Capacity <= 0 {
+		rm.Capacity = 2
+	}
+	var id int64
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO hotel_rooms (hotel_id, name, price_mmk, capacity, image_url, description)
+		VALUES ($1,$2,$3,$4,$5,NULLIF($6,''))
+		RETURNING id`,
+		rm.HotelID, rm.Name, rm.PriceMMK, rm.Capacity, rm.ImageURL, rm.Description,
 	).Scan(&id)
 	if err != nil {
 		return 0, err

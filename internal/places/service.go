@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"strings"
+	"sync"
 
 	"travel-app-backend/internal/pkg/external"
 
@@ -19,22 +22,15 @@ var ErrFavoriteNotFound = errors.New("favorite not found")
 // Service contains place/food/favorite business logic.
 // It depends only on the Repository interface, so an external API
 // repository can be injected without changing handlers.
-// When a DB search misses and a PlaceSearcher (e.g. Google Places) is
-// configured, the service proxies the provider, caches results into Neon,
-// and returns them in the standard envelope.
+// Data is preset-only: the repository serves Neon (the seeded mock rows
+// are hidden by source='seed'), and nothing is fetched at runtime —
+// bootstrap's -serpapi run is the only writer (SeedExternal).
 type Service struct {
-	repo    Repository
-	searcher external.PlaceSearcher // optional hybrid fallback (nil = DB only)
+	repo Repository
 }
 
 func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
-}
-
-// WithSearcher wires an external place provider for DB-miss fallback.
-func (s *Service) WithSearcher(searcher external.PlaceSearcher) *Service {
-	s.searcher = searcher
-	return s
 }
 
 func (s *Service) ListPlaces(ctx context.Context, f PlaceFilter) ([]Place, int64, error) {
@@ -46,48 +42,85 @@ func (s *Service) ListPlaces(ctx context.Context, f PlaceFilter) ([]Place, int64
 	if err != nil {
 		return nil, 0, err
 	}
-
-	// Hybrid fallback: empty DB result + search query → proxy external API.
-	if len(list) == 0 && f.Query != "" && s.searcher != nil {
-		fallback, ferr := s.fetchExternal(ctx, f.Query)
-		if ferr == nil && len(fallback) > 0 {
-			return fallback, int64(len(fallback)), nil
-		}
-	}
-
 	return list, total, nil
 }
 
-// fetchExternal proxies the external searcher and caches hits into Neon.
-func (s *Service) fetchExternal(ctx context.Context, query string) ([]Place, error) {
-	results, err := s.searcher.SearchPlaces(ctx, query)
-	if err != nil {
-		if errors.Is(err, external.ErrNotConfigured) || errors.Is(err, external.ErrProviderFailed) {
-			return nil, nil // degrade to empty DB result
-		}
-		return nil, err
+// SeedExternal forces the provider fetch path for the given queries even
+// when the table already holds rows (ListPlaces would otherwise serve
+// Neon and never fetch) — the bootstrap seeder's -serpapi run against a
+// warm database. The searcher is passed explicitly so the seeder can
+// target SerpApi; nothing else in the service fetches.
+func (s *Service) SeedExternal(ctx context.Context, searcher external.PlaceSearcher, queries []string) []Place {
+	if searcher == nil {
+		return nil
 	}
+	type providerResult struct {
+		query   string
+		results []external.PlaceResult
+		err     error
+	}
+	results := make([]providerResult, len(queries))
+	var wg sync.WaitGroup
+	for i, q := range queries {
+		wg.Add(1)
+		go func(i int, q string) {
+			defer wg.Done()
+			res, err := searcher.SearchPlaces(ctx, q)
+			results[i] = providerResult{query: q, results: res, err: err}
+		}(i, q)
+	}
+	wg.Wait()
 
-	out := make([]Place, 0, len(results))
+	var out []Place
+	seen := make(map[string]bool, 16) // overlapping anchor circles can repeat a POI
 	for _, r := range results {
-		p := Place{
-			Name:        r.Name,
-			Country:     r.Country,
-			Region:      r.Region,
-			Category:    r.Category,
-			ImageURL:    r.ImageURL,
-			GalleryURLs: []string{},
-			Rating:      r.Rating,
-			Description: r.Description,
+		if r.err != nil {
+			log.Printf("[places] external search %q unavailable, degrading to database data: %v", r.query, r.err)
+			continue
 		}
-		id, ierr := s.repo.InsertPlace(ctx, &p)
-		if ierr == nil {
-			p.ID = id
+		for _, res := range r.results {
+			key := strings.ToLower(res.Name + "|" + res.Country)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			if res.ImageURL == "" {
+				// Photo-only feeds: a provider row without a native photo
+				// never reaches Neon (placeholder cards are dropped).
+				continue
+			}
+			if !CuratedPlaceMedia(res.Category, res.ImageURL, res.Description) {
+				// Quality bar: junk/map/postcard-era file titles, chip
+				// mismatches, and thin (non-prose) rows never reach Neon.
+				continue
+			}
+			gallery := res.Gallery
+			if gallery == nil {
+				gallery = []string{} // gallery_urls is NOT NULL — never bind a nil slice
+			}
+			p := Place{
+				Name:        res.Name,
+				Country:     res.Country,
+				Region:      res.Region,
+				Category:    res.Category,
+				ImageURL:    res.ImageURL,
+				GalleryURLs: gallery,
+				Rating:      res.Rating,
+				Description: res.Description,
+				Lat:         res.Lat,
+				Lon:         res.Lon,
+			}
+			id, ierr := s.repo.InsertPlace(ctx, &p)
+			if ierr != nil {
+				// Cache write failure must not fail the request — log and serve.
+				log.Printf("[places] cache insert failed for %q, serving uncached result: %v", p.Name, ierr)
+			} else {
+				p.ID = id
+			}
+			out = append(out, p)
 		}
-		// On cache race (duplicate) still return the mapped record.
-		out = append(out, p)
 	}
-	return out, nil
+	return out
 }
 
 func (s *Service) GetPlace(ctx context.Context, id int64) (*Place, error) {

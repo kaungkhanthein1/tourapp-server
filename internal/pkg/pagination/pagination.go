@@ -38,8 +38,8 @@ func Parse(c *gin.Context) Page {
 
 // Meta is the response metadata block for paginated lists.
 type Meta struct {
-	Limit  int `json:"limit"`
-	Offset int `json:"offset"`
+	Limit  int   `json:"limit"`
+	Offset int   `json:"offset"`
 	Total  int64 `json:"total"`
 }
 

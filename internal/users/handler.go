@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	pkgmw "travel-app-backend/internal/pkg/middleware"
 	"travel-app-backend/internal/middleware"
+	pkgmw "travel-app-backend/internal/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"

@@ -4,8 +4,8 @@ import "time"
 
 // Status values for a booking (Pending/Complete tabs in Figma).
 const (
-	StatusPending  = "pending"
-	StatusComplete = "complete"
+	StatusPending   = "pending"
+	StatusComplete  = "complete"
 	StatusCancelled = "cancelled"
 )
 

@@ -47,6 +47,8 @@ When you need to do an inventory of resources, you need to look in both the sele
 
 You CAN update this rule file to save a user's help_level.
 
+- Saved help_level for this project: HIGH
+
 Constraints for each level:
 
 **LOW:**

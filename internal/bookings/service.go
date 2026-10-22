@@ -11,11 +11,11 @@ import (
 
 // ErrNotFound is returned when a booking does not exist.
 var (
-	ErrNotFound       = errors.New("booking not found")
-	ErrRoomNotFound   = errors.New("room not found for hotel")
-	ErrInvalidDates   = errors.New("check_out must be after check_in")
-	ErrNotPending     = errors.New("booking is not pending")
-	ErrForbidden      = errors.New("you do not own this booking")
+	ErrNotFound     = errors.New("booking not found")
+	ErrRoomNotFound = errors.New("room not found for hotel")
+	ErrInvalidDates = errors.New("check_out must be after check_in")
+	ErrNotPending   = errors.New("booking is not pending")
+	ErrForbidden    = errors.New("you do not own this booking")
 )
 
 // Service holds booking business logic behind the Repository interface.

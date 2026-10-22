@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"travel-app-backend/internal/middleware"
 	pkgmw "travel-app-backend/internal/pkg/middleware"
 	"travel-app-backend/internal/pkg/pagination"
-	"travel-app-backend/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"

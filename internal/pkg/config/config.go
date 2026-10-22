@@ -8,13 +8,11 @@ import (
 
 // Config holds validated runtime configuration.
 type Config struct {
-	DatabaseURL       string
-	Port              string
-	GinMode           string
-	JWTSecret         string
+	DatabaseURL        string
+	Port               string
+	GinMode            string
+	JWTSecret          string
 	CORSAllowedOrigins []string
-	GooglePlacesAPIKey string
-	MakcorpsAPIKey     string
 	MockDataDir        string
 
 	// Firebase service-account credentials. At least one must be set;
@@ -26,13 +24,11 @@ type Config struct {
 // Load reads the environment and fails fast on missing required values.
 func Load() (*Config, error) {
 	cfg := &Config{
-		DatabaseURL:        os.Getenv("DATABASE_URL"),
-		Port:               envOr("PORT", "8080"),
-		GinMode:            envOr("GIN_MODE", "release"),
-		JWTSecret:          os.Getenv("JWT_SECRET"),
-		GooglePlacesAPIKey: os.Getenv("GOOGLE_PLACES_API_KEY"),
-		MakcorpsAPIKey:     os.Getenv("MAKCORPS_API_KEY"),
-		MockDataDir:        envOr("MOCK_DATA_DIR", "mock_data"),
+		DatabaseURL: os.Getenv("DATABASE_URL"),
+		Port:        envOr("PORT", "8080"),
+		GinMode:     envOr("GIN_MODE", "release"),
+		JWTSecret:   os.Getenv("JWT_SECRET"),
+		MockDataDir: envOr("MOCK_DATA_DIR", "mock_data"),
 
 		FirebaseServiceAccountJSON: os.Getenv("FIREBASE_SERVICE_ACCOUNT_JSON"),
 		FirebaseCredentialsFile:    os.Getenv("FIREBASE_CREDENTIALS_FILE"),

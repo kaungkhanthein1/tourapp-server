@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"travel-app-backend/internal/pkg/pagination"
 	"travel-app-backend/internal/middleware"
+	"travel-app-backend/internal/pkg/pagination"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,7 +30,7 @@ func (h *Handler) RegisterPublic(rg *gin.RouterGroup) {
 // ListHotels handles GET /hotels.
 //
 //	@Summary		List hotels ( Hotels tab)
-//	@Description	Supports filters: place, q; paginated via limit/offset.
+//	@Description	Supports filters: place, q; paginated via limit/offset. Serves preset (seeded) data only.
 //	@Tags			hotels
 //	@Produce		json
 //	@Param			place	query		string	false	"Place name"
