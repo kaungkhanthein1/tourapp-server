@@ -124,9 +124,19 @@ func (r *PostgresRepository) ListTrending(ctx context.Context, limit int) ([]Pla
 }
 
 func (r *PostgresRepository) ListCategories(ctx context.Context) ([]Category, error) {
+	// Show configured categories only when the live places feed has rows for
+	// them. Keep the category table's stable IDs and icons for client keys.
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, name, COALESCE(icon,''), sort_order
-		FROM categories ORDER BY sort_order, id`)
+		SELECT c.id, c.name, COALESCE(c.icon,''), counts.cnt
+		FROM (
+			SELECT category, COUNT(*) AS cnt
+			FROM places
+			WHERE source <> 'seed' AND category <> ''
+			GROUP BY category
+		) AS counts
+		JOIN categories c ON LOWER(c.name) = LOWER(counts.category)
+		ORDER BY counts.cnt DESC, c.name
+		LIMIT 10`)
 	if err != nil {
 		return nil, err
 	}
@@ -135,9 +145,11 @@ func (r *PostgresRepository) ListCategories(ctx context.Context) ([]Category, er
 	var out []Category
 	for rows.Next() {
 		var c Category
-		if err := rows.Scan(&c.ID, &c.Name, &c.Icon, &c.SortOrder); err != nil {
+		var cnt int64
+		if err := rows.Scan(&c.ID, &c.Name, &c.Icon, &cnt); err != nil {
 			return nil, err
 		}
+		c.SortOrder = int(cnt)
 		out = append(out, c)
 	}
 	return out, rows.Err()
@@ -149,7 +161,7 @@ func (r *PostgresRepository) ListFoods(ctx context.Context, popularOnly bool) ([
 		conds = append(conds, "is_popular = true")
 	}
 	query := `SELECT id, name, country, image_url, is_popular, COALESCE(description,'') FROM foods WHERE ` +
-		strings.Join(conds, " AND ") + " ORDER BY is_popular DESC, id ASC"
+		strings.Join(conds, " AND ") + " ORDER BY created_at DESC, id DESC"
 
 	rows, err := r.pool.Query(ctx, query)
 	if err != nil {

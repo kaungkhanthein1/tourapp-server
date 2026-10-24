@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -17,16 +18,17 @@ import (
 	"travel-app-backend/internal/places"
 )
 
-// One-shot bootstrap: migrates/seeds the schema, and — behind -serpapi —
-// seeds places and hotels as preset data (google_maps place queries, one
-// labeled google_hotels query per place row), then applies the curation
-// quality bar. Nothing fetches at runtime: cmd/server serves Neon only.
+// One-shot bootstrap: migrates/seeds the schema, optionally loads SerpApi
+// place/hotel data or the offline food catalog, then applies place
+// curation. Nothing fetches at runtime: cmd/server serves Neon only.
 // No server is started — the API stays the user's to run.
 func main() {
 	_ = godotenv.Load() // same .env the server reads
 	dryRun := false
 	useSerpapi := false
 	seedPlaces := true
+	seedHotels := true
+	seedFoodCatalog := false
 	for _, arg := range os.Args[1:] {
 		switch arg {
 		case "-dry-run":
@@ -40,7 +42,16 @@ func main() {
 			// resumes: only places with no preset rows are queried.
 			useSerpapi = true
 			seedPlaces = false
+		case "-food-catalog":
+			// Offline, curated catalog continuation: add dishes only for
+			// countries with no live food rows. Existing provider data stays.
+			seedPlaces = false
+			seedHotels = false
+			seedFoodCatalog = true
 		}
+	}
+	if seedFoodCatalog && useSerpapi {
+		fail("-food-catalog cannot be combined with SerpApi flags\n")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
@@ -68,13 +79,108 @@ func main() {
 	// only caller of the paid API. The hotel block is idempotent by
 	// label|name dedupe, so repeat runs only pay for uncovered places.
 	if useSerpapi {
-		seedWithSerpapi(ctx, pool, placesSvc, hotelsSvc, seedPlaces)
+		seedWithSerpapi(ctx, pool, placesSvc, hotelsSvc, seedPlaces, seedHotels)
 	}
 
-	curatePlaces(ctx, pool, dryRun)
+	// Catalog-only runs do not mutate the places catalog as a side effect.
+	if seedFoodCatalog {
+		if err := seedCuratedFoods(ctx, pool, dryRun); err != nil {
+			fail("food catalog: %v", err)
+		}
+	}
+	if !seedFoodCatalog {
+		curatePlaces(ctx, pool, dryRun)
+	}
 
 	stats(ctx, pool)
 	fmt.Printf("bootstrap elapsed: %s\n", time.Since(start).Truncate(time.Second))
+}
+
+type catalogFood struct {
+	Name        string `json:"name"`
+	Country     string `json:"country"`
+	ImageURL    string `json:"image_url"`
+	Description string `json:"description"`
+}
+
+// seedCuratedFoods adds the checked-in, photo-backed food catalog only
+// where no live food rows exist. It never deletes or replaces provider
+// data, so reruns are idempotent and safe after partial completion.
+func seedCuratedFoods(ctx context.Context, pool *pgxpool.Pool, dryRun bool) error {
+	b, err := os.ReadFile("mock_data/foods_catalog.json")
+	if err != nil {
+		return fmt.Errorf("read catalog: %w", err)
+	}
+	var entries []catalogFood
+	if err := json.Unmarshal(b, &entries); err != nil {
+		return fmt.Errorf("parse catalog: %w", err)
+	}
+	byCountry := make(map[string][]catalogFood)
+	seen := make(map[string]struct{}, len(entries))
+	for _, f := range entries {
+		f.Name = strings.TrimSpace(f.Name)
+		f.Country = strings.TrimSpace(f.Country)
+		f.ImageURL = strings.TrimSpace(f.ImageURL)
+		f.Description = strings.TrimSpace(f.Description)
+		if f.Name == "" || f.Country == "" || !strings.HasPrefix(f.ImageURL, "https://") {
+			return fmt.Errorf("invalid catalog row %q (%s): name, country and HTTPS image URL are required", f.Name, f.Country)
+		}
+		key := strings.ToLower(f.Country + "\x00" + f.Name)
+		if _, ok := seen[key]; ok {
+			return fmt.Errorf("duplicate catalog dish %q (%s)", f.Name, f.Country)
+		}
+		seen[key] = struct{}{}
+		byCountry[f.Country] = append(byCountry[f.Country], f)
+	}
+	countries := make([]string, 0, len(byCountry))
+	for country := range byCountry {
+		countries = append(countries, country)
+	}
+	sort.Strings(countries)
+	for _, country := range countries {
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("%s begin transaction: %w", country, err)
+		}
+		if _, err := tx.Exec(ctx,
+			`SELECT pg_advisory_xact_lock(hashtext('tourapp:food-catalog'), hashtext(LOWER($1)))`, country); err != nil {
+			_ = tx.Rollback(ctx)
+			return fmt.Errorf("%s acquire seed lock: %w", country, err)
+		}
+		var exists bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (
+			SELECT 1 FROM foods WHERE LOWER(country) = LOWER($1) AND source <> 'seed'
+		)`, country).Scan(&exists); err != nil {
+			_ = tx.Rollback(ctx)
+			return fmt.Errorf("%s check existing rows: %w", country, err)
+		}
+		if exists {
+			_ = tx.Rollback(ctx)
+			fmt.Printf("food catalog: %s already has live rows — kept\n", country)
+			continue
+		}
+		if dryRun {
+			_ = tx.Rollback(ctx)
+			fmt.Printf("food catalog: %s would add %d dishes\n", country, len(byCountry[country]))
+			continue
+		}
+		written := 0
+		for _, f := range byCountry[country] {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO foods (name, country, image_url, is_popular, description, source)
+				VALUES ($1, $2, $3, TRUE, NULLIF($4,''), 'catalog')`,
+				strings.TrimSpace(f.Name), country, strings.TrimSpace(f.ImageURL), strings.TrimSpace(f.Description)); err != nil {
+				_ = tx.Rollback(ctx)
+				return fmt.Errorf("%s insert %q (transaction rolled back): %w", country, f.Name, err)
+			}
+			written++
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return fmt.Errorf("%s commit transaction: %w", country, err)
+		}
+		fmt.Printf("food catalog: %s added %d dishes\n", country, written)
+	}
+	return nil
 }
 
 // serpapiPlaceQueries are the google_maps searches behind -serpapi:
@@ -91,12 +197,13 @@ var serpapiPlaceQueries = []string{
 	"Bali volcanoes",
 }
 
-// seedWithSerpapi fetches the SerpApi place/hotel queries into Neon via
-// the services' forced-seed paths (the plain list calls would serve the
-// warm database and never fetch). withPlaces=false skips the google_maps
-// block (the -serpapi-hotels continuation). Failures degrade per query —
-// a spent plan or a transient outage reports, never aborts, the run.
-func seedWithSerpapi(ctx context.Context, pool *pgxpool.Pool, placesSvc *places.Service, hotelsSvc *hotels.Service, withPlaces bool) {
+// seedWithSerpapi fetches SerpApi places/hotels into Neon
+// via the services' forced-seed paths (the plain list calls would serve
+// the warm database and never fetch). The two blocks are independent
+// flags: -serpapi (places+hotels) and -serpapi-hotels.
+// Failures degrade per query — a spent plan or a transient outage
+// reports, never aborts, the run.
+func seedWithSerpapi(ctx context.Context, pool *pgxpool.Pool, placesSvc *places.Service, hotelsSvc *hotels.Service, withPlaces, withHotels bool) {
 	key := strings.TrimSpace(os.Getenv("SERPAPI_KEY"))
 	if key == "" {
 		fail("SERPAPI_KEY is not set (add it to .env) — -serpapi needs it, one plan credit per query\n")
@@ -107,7 +214,9 @@ func seedWithSerpapi(ctx context.Context, pool *pgxpool.Pool, placesSvc *places.
 		pl := placesSvc.SeedExternal(ctx, client, serpapiPlaceQueries)
 		fmt.Printf("serpapi places: %d rows fetched (%d queries)\n", len(pl), len(serpapiPlaceQueries))
 	}
-	seedPresetHotels(ctx, pool, hotelsSvc, client)
+	if withHotels {
+		seedPresetHotels(ctx, pool, hotelsSvc, client)
+	}
 }
 
 // placeRef is one place row as the hotel seeder sees it: the exact

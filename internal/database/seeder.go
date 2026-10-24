@@ -154,8 +154,8 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	// Live-only content: list queries filter out rows whose source is
 	// 'seed' (the mock dataset) so the app only ever shows provider-cached
 	// rows; the constant DEFAULT backfills existing rows without a table
-	// rewrite. Provider cache writes set source explicitly
-	// ('openstreetmap' for places/foods/hotels).
+	// rewrite. Place/hotel provider writes and curated food inserts set
+	// source explicitly so those live rows remain visible.
 	if _, err := pool.Exec(ctx,
 		`ALTER TABLE places ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'seed'`); err != nil {
 		return fmt.Errorf("migrate places.source: %w", err)
