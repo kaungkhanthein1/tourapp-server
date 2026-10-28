@@ -62,6 +62,10 @@ type Identity struct {
 	EmailVerified bool
 	Name          string
 	Picture       string
+	// Role is the optional Firebase custom claim ("admin") — a fast path
+	// for AdminRequired. Absent on normal users; the DB role stays the
+	// source of truth for revocation.
+	Role string
 }
 
 // VerifyIDToken verifies a Firebase ID token and returns its identity claims.
@@ -82,6 +86,9 @@ func (c *Client) VerifyIDToken(ctx context.Context, idToken string) (*Identity, 
 	}
 	if v, ok := token.Claims["email_verified"].(bool); ok {
 		id.EmailVerified = v
+	}
+	if v, ok := token.Claims["role"].(string); ok {
+		id.Role = v
 	}
 	return id, nil
 }

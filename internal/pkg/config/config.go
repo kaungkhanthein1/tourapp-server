@@ -19,6 +19,10 @@ type Config struct {
 	// validated in Load so the server never starts half-configured.
 	FirebaseServiceAccountJSON string // raw JSON (or a path) from FIREBASE_SERVICE_ACCOUNT_JSON
 	FirebaseCredentialsFile    string // path from FIREBASE_CREDENTIALS_FILE
+
+	// AdminEmails is the normalized ADMIN_EMAILS RBAC allow-list
+	// (boot-time promotion to role='admin' via database.PromoteAdmins).
+	AdminEmails []string
 }
 
 // Load reads the environment and fails fast on missing required values.
@@ -32,6 +36,8 @@ func Load() (*Config, error) {
 
 		FirebaseServiceAccountJSON: os.Getenv("FIREBASE_SERVICE_ACCOUNT_JSON"),
 		FirebaseCredentialsFile:    os.Getenv("FIREBASE_CREDENTIALS_FILE"),
+
+		AdminEmails: ParseAdminEmails(os.Getenv("ADMIN_EMAILS")),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -64,4 +70,24 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// ParseAdminEmails splits a comma-separated ADMIN_EMAILS list into
+// trimmed, lowercased, de-duplicated addresses ("" → nil). Used by both
+// the server and cmd/bootstrap so promotion behaves identically.
+func ParseAdminEmails(raw string) []string {
+	seen := make(map[string]struct{})
+	var out []string
+	for _, e := range strings.Split(raw, ",") {
+		e = strings.ToLower(strings.TrimSpace(e))
+		if e == "" {
+			continue
+		}
+		if _, dup := seen[e]; dup {
+			continue
+		}
+		seen[e] = struct{}{}
+		out = append(out, e)
+	}
+	return out
 }

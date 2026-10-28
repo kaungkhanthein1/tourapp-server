@@ -72,6 +72,9 @@ func FirebaseAuthMiddleware(verifier TokenVerifier, store FirebaseUserStore) gin
 		c.Set(ContextFirebaseUID, identity.UID)
 		c.Set(ContextEmailVerified, identity.EmailVerified)
 		c.Set(ContextUserName, identity.Name)
+		if identity.Role != "" {
+			c.Set(ContextRole, identity.Role)
+		}
 		c.Next()
 	}
 }

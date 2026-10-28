@@ -1,16 +1,136 @@
 basePath: /api/v1
 definitions:
-  internal_bookings.CreateRequest:
+  admin.CreateHotelRequest:
+    properties:
+      country:
+        type: string
+      facilities:
+        items:
+          type: string
+        type: array
+      gallery_urls:
+        items:
+          type: string
+        type: array
+      image_url:
+        type: string
+      name:
+        type: string
+      place:
+        type: string
+      place_id:
+        type: integer
+      rating:
+        type: number
+      region:
+        type: string
+    required:
+    - name
+    - place
+    type: object
+  admin.InventoryRequest:
+    properties:
+      is_active:
+        type: boolean
+      total_units:
+        minimum: 1
+        type: integer
+    required:
+    - total_units
+    type: object
+  admin.RoomRequest:
+    properties:
+      capacity:
+        minimum: 1
+        type: integer
+      description:
+        type: string
+      image_url:
+        type: string
+      is_active:
+        description: nil → true on create
+        type: boolean
+      name:
+        type: string
+      price_mmk:
+        minimum: 0
+        type: integer
+      total_units:
+        minimum: 1
+        type: integer
+    required:
+    - name
+    - price_mmk
+    type: object
+  admin.SetRoleRequest:
+    properties:
+      role:
+        type: string
+    required:
+    - role
+    type: object
+  admin.UpdateBookingRequest:
     properties:
       check_in:
         type: string
       check_out:
+        type: string
+      guest_name:
+        type: string
+      guest_phone:
+        type: string
+      guests:
+        type: integer
+    type: object
+  admin.UpdateHotelRequest:
+    properties:
+      country:
+        type: string
+      facilities:
+        items:
+          type: string
+        type: array
+      gallery_urls:
+        items:
+          type: string
+        type: array
+      image_url:
+        type: string
+      name:
+        type: string
+      place:
+        type: string
+      rating:
+        type: number
+      region:
+        type: string
+    type: object
+  admin.UpdateStatusRequest:
+    properties:
+      reason:
+        type: string
+      status:
+        type: string
+    required:
+    - status
+    type: object
+  bookings.CreateRequest:
+    properties:
+      check_in:
+        type: string
+      check_out:
+        type: string
+      guest_name:
+        type: string
+      guest_phone:
         type: string
       guests:
         minimum: 1
         type: integer
       hotel_id:
         type: integer
+      payment_method:
+        type: string
       room_id:
         type: integer
     required:
@@ -19,7 +139,7 @@ definitions:
     - hotel_id
     - room_id
     type: object
-  internal_bookings.RescheduleRequest:
+  bookings.RescheduleRequest:
     properties:
       check_in:
         type: string
@@ -29,7 +149,7 @@ definitions:
     - check_in
     - check_out
     type: object
-  internal_places.AddFavoriteRequest:
+  places.AddFavoriteRequest:
     properties:
       note:
         type: string
@@ -38,7 +158,7 @@ definitions:
     required:
     - place_id
     type: object
-  internal_users.LoginRequest:
+  users.LoginRequest:
     properties:
       email:
         type: string
@@ -48,7 +168,7 @@ definitions:
     - email
     - password
     type: object
-  internal_users.RegisterRequest:
+  users.RegisterRequest:
     properties:
       email:
         type: string
@@ -64,7 +184,7 @@ definitions:
     - name
     - password
     type: object
-  internal_users.UpdateRequest:
+  users.UpdateRequest:
     properties:
       avatar_url:
         type: string
@@ -84,6 +204,629 @@ info:
   title: Tourapp API
   version: "3.0"
 paths:
+  /admin/audit-logs:
+    get:
+      parameters:
+      - description: booking | hotel | room | user
+        in: query
+        name: entity_type
+        type: string
+      - description: Filter by entity
+        in: query
+        name: entity_id
+        type: integer
+      - description: Max items (1-100)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Admin action trail (every extranet mutation)
+      tags:
+      - admin-audit
+  /admin/bookings:
+    get:
+      parameters:
+      - description: pending | confirmed | complete | cancelled
+        in: query
+        name: status
+        type: string
+      - description: Filter by hotel
+        in: query
+        name: hotel_id
+        type: integer
+      - description: Guest name/phone/email or hotel name
+        in: query
+        name: q
+        type: string
+      - description: check_in >= from (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: check_in < to (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      - description: Max items (1-100, default 20)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: List all bookings (extranet)
+      tags:
+      - admin-bookings
+  /admin/bookings/{id}:
+    get:
+      parameters:
+      - description: Booking ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Get one booking
+      tags:
+      - admin-bookings
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Booking ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Partial update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/admin.UpdateBookingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Edit guest fields/dates of a pending or confirmed booking
+      tags:
+      - admin-bookings
+  /admin/bookings/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Booking ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: status + optional reason (audited)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/admin.UpdateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Transition a booking status (pending→confirmed/cancelled, confirmed→complete/cancelled)
+      tags:
+      - admin-bookings
+  /admin/hotels:
+    get:
+      parameters:
+      - description: Name/place search
+        in: query
+        name: q
+        type: string
+      - description: Max items (1-100)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: List hotels with room/active-booking counts
+      tags:
+      - admin-hotels
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Hotel
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/admin.CreateHotelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Create a hotel
+      tags:
+      - admin-hotels
+  /admin/hotels/{id}:
+    delete:
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Delete a hotel (409 while any booking references it)
+      tags:
+      - admin-hotels
+    get:
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Get a hotel with its rooms
+      tags:
+      - admin-hotels
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Partial update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/admin.UpdateHotelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Patch a hotel (supplied fields only)
+      tags:
+      - admin-hotels
+  /admin/hotels/{id}/rooms:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Room
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/admin.RoomRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Add a room type to a hotel
+      tags:
+      - admin-hotels
+  /admin/hotels/{id}/rooms/{rid}:
+    delete:
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Room ID
+        in: path
+        name: rid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Delete a room (409 when bookings reference it — deactivate instead)
+      tags:
+      - admin-hotels
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Room ID
+        in: path
+        name: rid
+        required: true
+        type: integer
+      - description: Room
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/admin.RoomRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Patch a room
+      tags:
+      - admin-hotels
+  /admin/hotels/{id}/rooms/{rid}/inventory:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Room ID
+        in: path
+        name: rid
+        required: true
+        type: integer
+      - description: Inventory
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/admin.InventoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Set room allotment (total_units) and stop-sell (is_active)
+      tags:
+      - admin-hotels
+  /admin/stats/occupancy:
+    get:
+      parameters:
+      - description: YYYY-MM-DD inclusive
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: YYYY-MM-DD exclusive
+        in: query
+        name: to
+        required: true
+        type: string
+      - description: Limit to one hotel
+        in: query
+        name: hotel_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Per-night occupancy for [from, to) — same checkout-exclusive semantics
+        as the booking constraint
+      tags:
+      - admin-stats
+  /admin/stats/overview:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Dashboard counters (bookings by status, revenue, catalog, users)
+      tags:
+      - admin-stats
+  /admin/users:
+    get:
+      parameters:
+      - description: Name/email search
+        in: query
+        name: q
+        type: string
+      - description: user | admin
+        in: query
+        name: role
+        type: string
+      - description: Max items (1-100)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: List users with booking counts
+      tags:
+      - admin-users
+  /admin/users/{id}:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: role
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/admin.SetRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - AdminAuth: []
+      summary: Promote/demote a user (DB role is the revocable source of truth)
+      tags:
+      - admin-users
   /bookings:
     get:
       parameters:
@@ -112,13 +855,17 @@ paths:
     post:
       consumes:
       - application/json
+      description: 'Confirms instantly: payment is settled at the property, so the
+        booking is created with status=''confirmed''. Omit payment_method or pass
+        ''pay_at_property''; any other value returns 400 until an online gateway exists.'
       parameters:
-      - description: hotel_id, room_id, check_in, check_out
+      - description: hotel_id, room_id, check_in, check_out, payment_method (optional,
+          default pay_at_property)
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_bookings.CreateRequest'
+          $ref: '#/definitions/bookings.CreateRequest'
       produces:
       - application/json
       responses:
@@ -137,9 +884,15 @@ paths:
           schema:
             additionalProperties: true
             type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
       security:
       - BearerAuth: []
-      summary: Book a hotel room
+      summary: Book a hotel room — pay-at-property, born confirmed (409 when sold
+        out)
       tags:
       - bookings
   /bookings/{id}/cancel:
@@ -188,7 +941,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_bookings.RescheduleRequest'
+          $ref: '#/definitions/bookings.RescheduleRequest'
       produces:
       - application/json
       responses:
@@ -236,7 +989,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_places.AddFavoriteRequest'
+          $ref: '#/definitions/places.AddFavoriteRequest'
       produces:
       - application/json
       responses:
@@ -306,7 +1059,8 @@ paths:
       - places
   /hotels:
     get:
-      description: 'Supports filters: place, q; paginated via limit/offset.'
+      description: 'Supports filters: place, q; paginated via limit/offset. Serves
+        preset (seeded) data only.'
       parameters:
       - description: Place name
         in: query
@@ -357,6 +1111,48 @@ paths:
             additionalProperties: true
             type: object
       summary: Hotel detail with facilities and rooms
+      tags:
+      - hotels
+  /hotels/{id}/availability:
+    get:
+      description: 'Per-room free units over [check_in, check_out): units_booked is
+        the peak concurrent active holds on any single night; bookable=false when
+        sold out or stop-sold (is_active=false).'
+      parameters:
+      - description: Hotel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: YYYY-MM-DD (inclusive)
+        in: query
+        name: check_in
+        required: true
+        type: string
+      - description: YYYY-MM-DD (exclusive)
+        in: query
+        name: check_out
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Real-time room availability for a date window
       tags:
       - hotels
   /hotels/{id}/rooms:
@@ -484,7 +1280,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_users.LoginRequest'
+          $ref: '#/definitions/users.LoginRequest'
       produces:
       - application/json
       responses:
@@ -519,7 +1315,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_users.UpdateRequest'
+          $ref: '#/definitions/users.UpdateRequest'
       produces:
       - application/json
       responses:
@@ -559,7 +1355,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_users.RegisterRequest'
+          $ref: '#/definitions/users.RegisterRequest'
       produces:
       - application/json
       responses:

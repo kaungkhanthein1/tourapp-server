@@ -1,4 +1,5 @@
 .env
+credentials/
 credentials/firebase-service-account.json
 bin/
 *.exe

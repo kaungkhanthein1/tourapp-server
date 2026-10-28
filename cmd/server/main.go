@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	adminpg "travel-app-backend/internal/admin"
 	"travel-app-backend/internal/bookings"
 	"travel-app-backend/internal/database"
 	"travel-app-backend/internal/hotels"
@@ -66,6 +67,9 @@ func main() {
 	if err := database.Seed(ctx, pool); err != nil {
 		log.Fatalf("seed: %v", err)
 	}
+	if err := database.PromoteAdmins(ctx, pool, cfg.AdminEmails); err != nil {
+		log.Fatalf("rbac: %v", err)
+	}
 
 	if cfg.GinMode != "" {
 		gin.SetMode(cfg.GinMode)
@@ -104,8 +108,29 @@ func main() {
 	bookingsRepo := bookings.NewPostgresRepository(pool)
 	bookingsHandler := bookings.NewHandler(bookings.NewService(bookingsRepo))
 	bookingsHandler.RegisterProtected(authorized)
+	// Real-time availability engine — public (no token): the guest must
+	// see free/sold-out units BEFORE signing in to book.
+	bookingsHandler.RegisterPublic(api)
 
 	usersHandler.RegisterProtected(authorized)
+
+	// Admin extranet API. Two layers, in order: FirebaseAuthMiddleware
+	// verifies the ID token and upserts the user (setting the UID in the
+	// context), then AdminRequired re-checks the role server-side on every
+	// request (Firebase claim fast path, users.role in Neon as the
+	// revocable source of truth).
+	admin := api.Group("/admin")
+	admin.Use(pkgmw.FirebaseAuthMiddleware(fb, usersRepo))
+	admin.Use(pkgmw.AdminRequired(usersRepo))
+	admin.GET("/ping", func(c *gin.Context) {
+		role, _ := c.Get(pkgmw.ContextRole)
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"role": role}})
+	})
+
+	adminRepo := adminpg.NewPostgresRepository(pool)
+	adminService := adminpg.NewService(adminRepo)
+	adminHandler := adminpg.NewHandler(adminService)
+	adminHandler.RegisterAdmin(admin)
 
 	r.GET("/health", func(c *gin.Context) {
 		pingCtx, cancel := context.WithTimeout(ctx, 3*time.Second)

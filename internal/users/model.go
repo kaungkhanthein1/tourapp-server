@@ -9,6 +9,7 @@ type User struct {
 	FirebaseUID  string    `json:"firebase_uid,omitempty"`
 	Name         string    `json:"name"`
 	Email        string    `json:"email"`
+	Role         string    `json:"role"` // 'user' (default) | 'admin' — RBAC for /admin routes
 	Phone        string    `json:"phone,omitempty"`
 	AvatarURL    string    `json:"avatar_url,omitempty"`
 	Bio          string    `json:"bio,omitempty"`

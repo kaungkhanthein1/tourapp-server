@@ -15,6 +15,970 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/audit-logs": {
+            "get": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-audit"
+                ],
+                "summary": "Admin action trail (every extranet mutation)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "booking | hotel | room | user",
+                        "name": "entity_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by entity",
+                        "name": "entity_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (1-100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/bookings": {
+            "get": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-bookings"
+                ],
+                "summary": "List all bookings (extranet)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "pending | confirmed | complete | cancelled",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by hotel",
+                        "name": "hotel_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Guest name/phone/email or hotel name",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "check_in \u003e= from (YYYY-MM-DD)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "check_in \u003c to (YYYY-MM-DD)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (1-100, default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/bookings/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-bookings"
+                ],
+                "summary": "Get one booking",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Booking ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-bookings"
+                ],
+                "summary": "Edit guest fields/dates of a pending or confirmed booking",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Booking ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.UpdateBookingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/bookings/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-bookings"
+                ],
+                "summary": "Transition a booking status (pending→confirmed/cancelled, confirmed→complete/cancelled)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Booking ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "status + optional reason (audited)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.UpdateStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/hotels": {
+            "get": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-hotels"
+                ],
+                "summary": "List hotels with room/active-booking counts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Name/place search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (1-100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-hotels"
+                ],
+                "summary": "Create a hotel",
+                "parameters": [
+                    {
+                        "description": "Hotel",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.CreateHotelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/hotels/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-hotels"
+                ],
+                "summary": "Get a hotel with its rooms",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-hotels"
+                ],
+                "summary": "Delete a hotel (409 while any booking references it)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-hotels"
+                ],
+                "summary": "Patch a hotel (supplied fields only)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.UpdateHotelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/hotels/{id}/rooms": {
+            "post": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-hotels"
+                ],
+                "summary": "Add a room type to a hotel",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Room",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.RoomRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/hotels/{id}/rooms/{rid}": {
+            "delete": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-hotels"
+                ],
+                "summary": "Delete a room (409 when bookings reference it — deactivate instead)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Room ID",
+                        "name": "rid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-hotels"
+                ],
+                "summary": "Patch a room",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Room ID",
+                        "name": "rid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Room",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.RoomRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/hotels/{id}/rooms/{rid}/inventory": {
+            "put": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-hotels"
+                ],
+                "summary": "Set room allotment (total_units) and stop-sell (is_active)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Room ID",
+                        "name": "rid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Inventory",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.InventoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/stats/occupancy": {
+            "get": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-stats"
+                ],
+                "summary": "Per-night occupancy for [from, to) — same checkout-exclusive semantics as the booking constraint",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD inclusive",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD exclusive",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit to one hotel",
+                        "name": "hotel_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/stats/overview": {
+            "get": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-stats"
+                ],
+                "summary": "Dashboard counters (bookings by status, revenue, catalog, users)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users": {
+            "get": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-users"
+                ],
+                "summary": "List users with booking counts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Name/email search",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "user | admin",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (1-100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}": {
+            "patch": {
+                "security": [
+                    {
+                        "AdminAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-users"
+                ],
+                "summary": "Promote/demote a user (DB role is the revocable source of truth)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "role",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.SetRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/bookings": {
             "get": {
                 "security": [
@@ -60,6 +1024,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Confirms instantly: payment is settled at the property, so the booking is created with status='confirmed'. Omit payment_method or pass 'pay_at_property'; any other value returns 400 until an online gateway exists.",
                 "consumes": [
                     "application/json"
                 ],
@@ -69,15 +1034,15 @@ const docTemplate = `{
                 "tags": [
                     "bookings"
                 ],
-                "summary": "Book a hotel room",
+                "summary": "Book a hotel room — pay-at-property, born confirmed (409 when sold out)",
                 "parameters": [
                     {
-                        "description": "hotel_id, room_id, check_in, check_out",
+                        "description": "hotel_id, room_id, check_in, check_out, payment_method (optional, default pay_at_property)",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_bookings.CreateRequest"
+                            "$ref": "#/definitions/bookings.CreateRequest"
                         }
                     }
                 ],
@@ -98,6 +1063,13 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -185,7 +1157,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_bookings.RescheduleRequest"
+                            "$ref": "#/definitions/bookings.RescheduleRequest"
                         }
                     }
                 ],
@@ -261,7 +1233,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_places.AddFavoriteRequest"
+                            "$ref": "#/definitions/places.AddFavoriteRequest"
                         }
                     }
                 ],
@@ -361,7 +1333,7 @@ const docTemplate = `{
         },
         "/hotels": {
             "get": {
-                "description": "Supports filters: place, q; paginated via limit/offset.",
+                "description": "Supports filters: place, q; paginated via limit/offset. Serves preset (seeded) data only.",
                 "produces": [
                     "application/json"
                 ],
@@ -427,6 +1399,64 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/hotels/{id}/availability": {
+            "get": {
+                "description": "Per-room free units over [check_in, check_out): units_booked is the peak concurrent active holds on any single night; bookable=false when sold out or stop-sold (is_active=false).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hotels"
+                ],
+                "summary": "Real-time room availability for a date window",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Hotel ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD (inclusive)",
+                        "name": "check_in",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD (exclusive)",
+                        "name": "check_out",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -634,7 +1664,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_users.LoginRequest"
+                            "$ref": "#/definitions/users.LoginRequest"
                         }
                     }
                 ],
@@ -688,7 +1718,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_users.UpdateRequest"
+                            "$ref": "#/definitions/users.UpdateRequest"
                         }
                     }
                 ],
@@ -744,7 +1774,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_users.RegisterRequest"
+                            "$ref": "#/definitions/users.RegisterRequest"
                         }
                     }
                 ],
@@ -815,7 +1845,178 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "internal_bookings.CreateRequest": {
+        "admin.CreateHotelRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "place"
+            ],
+            "properties": {
+                "country": {
+                    "type": "string"
+                },
+                "facilities": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "gallery_urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "place": {
+                    "type": "string"
+                },
+                "place_id": {
+                    "type": "integer"
+                },
+                "rating": {
+                    "type": "number"
+                },
+                "region": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.InventoryRequest": {
+            "type": "object",
+            "required": [
+                "total_units"
+            ],
+            "properties": {
+                "is_active": {
+                    "type": "boolean"
+                },
+                "total_units": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "admin.RoomRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "price_mmk"
+            ],
+            "properties": {
+                "capacity": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "description": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "description": "nil → true on create",
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price_mmk": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "total_units": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "admin.SetRoleRequest": {
+            "type": "object",
+            "required": [
+                "role"
+            ],
+            "properties": {
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.UpdateBookingRequest": {
+            "type": "object",
+            "properties": {
+                "check_in": {
+                    "type": "string"
+                },
+                "check_out": {
+                    "type": "string"
+                },
+                "guest_name": {
+                    "type": "string"
+                },
+                "guest_phone": {
+                    "type": "string"
+                },
+                "guests": {
+                    "type": "integer"
+                }
+            }
+        },
+        "admin.UpdateHotelRequest": {
+            "type": "object",
+            "properties": {
+                "country": {
+                    "type": "string"
+                },
+                "facilities": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "gallery_urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "place": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "number"
+                },
+                "region": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.UpdateStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "bookings.CreateRequest": {
             "type": "object",
             "required": [
                 "check_in",
@@ -830,6 +2031,12 @@ const docTemplate = `{
                 "check_out": {
                     "type": "string"
                 },
+                "guest_name": {
+                    "type": "string"
+                },
+                "guest_phone": {
+                    "type": "string"
+                },
                 "guests": {
                     "type": "integer",
                     "minimum": 1
@@ -837,12 +2044,15 @@ const docTemplate = `{
                 "hotel_id": {
                     "type": "integer"
                 },
+                "payment_method": {
+                    "type": "string"
+                },
                 "room_id": {
                     "type": "integer"
                 }
             }
         },
-        "internal_bookings.RescheduleRequest": {
+        "bookings.RescheduleRequest": {
             "type": "object",
             "required": [
                 "check_in",
@@ -857,7 +2067,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_places.AddFavoriteRequest": {
+        "places.AddFavoriteRequest": {
             "type": "object",
             "required": [
                 "place_id"
@@ -871,7 +2081,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_users.LoginRequest": {
+        "users.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -886,7 +2096,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_users.RegisterRequest": {
+        "users.RegisterRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -909,7 +2119,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_users.UpdateRequest": {
+        "users.UpdateRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {

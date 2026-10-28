@@ -20,6 +20,10 @@ type Repository interface {
 	// verified Firebase ID token and returns the local user id. It is the
 	// persistence half of Firebase Auth middleware.
 	GetOrCreateByFirebaseUID(ctx context.Context, uid, email, name string) (int64, error)
+	// GetRoleByFirebaseUID resolves the RBAC role ('user' | 'admin') for
+	// AdminRequired — the source of truth behind the optional Firebase
+	// custom claim (revocation takes effect on the next request).
+	GetRoleByFirebaseUID(ctx context.Context, uid string) (string, error)
 }
 
 // PostgresRepository reads/writes Neon PostgreSQL.
@@ -33,13 +37,13 @@ func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
 
 var _ Repository = (*PostgresRepository)(nil)
 
-const userColumns = `id, COALESCE(firebase_uid,''), name, email, COALESCE(phone,''), COALESCE(avatar_url,''), COALESCE(bio,''), password_hash, created_at`
+const userColumns = `id, COALESCE(firebase_uid,''), name, email, role, COALESCE(phone,''), COALESCE(avatar_url,''), COALESCE(bio,''), password_hash, created_at`
 
 func (r *PostgresRepository) GetByID(ctx context.Context, id int64) (*User, error) {
 	var u User
 	err := r.pool.QueryRow(ctx,
 		`SELECT `+userColumns+` FROM users WHERE id = $1`, id,
-	).Scan(&u.ID, &u.FirebaseUID, &u.Name, &u.Email, &u.Phone, &u.AvatarURL, &u.Bio, &u.PasswordHash, &u.CreatedAt)
+	).Scan(&u.ID, &u.FirebaseUID, &u.Name, &u.Email, &u.Role, &u.Phone, &u.AvatarURL, &u.Bio, &u.PasswordHash, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +54,7 @@ func (r *PostgresRepository) GetByEmail(ctx context.Context, email string) (*Use
 	var u User
 	err := r.pool.QueryRow(ctx,
 		`SELECT `+userColumns+` FROM users WHERE email = $1`, email,
-	).Scan(&u.ID, &u.FirebaseUID, &u.Name, &u.Email, &u.Phone, &u.AvatarURL, &u.Bio, &u.PasswordHash, &u.CreatedAt)
+	).Scan(&u.ID, &u.FirebaseUID, &u.Name, &u.Email, &u.Role, &u.Phone, &u.AvatarURL, &u.Bio, &u.PasswordHash, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +72,7 @@ func (r *PostgresRepository) Create(ctx context.Context, name, email, phone, pas
 		SELECT id, 'legacy:' || id::text, $1, $2, NULLIF($3,''), $4 FROM seq
 		RETURNING `+userColumns,
 		name, email, phone, passwordHash,
-	).Scan(&u.ID, &u.FirebaseUID, &u.Name, &u.Email, &u.Phone, &u.AvatarURL, &u.Bio, &u.PasswordHash, &u.CreatedAt)
+	).Scan(&u.ID, &u.FirebaseUID, &u.Name, &u.Email, &u.Role, &u.Phone, &u.AvatarURL, &u.Bio, &u.PasswordHash, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -152,6 +156,18 @@ func (r *PostgresRepository) GetOrCreateByFirebaseUID(ctx context.Context, uid, 
 		return 0, err
 	}
 	return id, nil
+}
+
+// GetRoleByFirebaseUID implements the AdminRequired lookup: one indexed
+// read of users.role for the verified UID from the request context.
+func (r *PostgresRepository) GetRoleByFirebaseUID(ctx context.Context, uid string) (string, error) {
+	var role string
+	if err := r.pool.QueryRow(ctx,
+		`SELECT role FROM users WHERE firebase_uid = $1`, uid,
+	).Scan(&role); err != nil {
+		return "", err
+	}
+	return role, nil
 }
 
 func (r *PostgresRepository) Update(ctx context.Context, id int64, u UpdateRequest) error {

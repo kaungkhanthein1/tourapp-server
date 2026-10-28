@@ -14,6 +14,7 @@ import (
 
 	"travel-app-backend/internal/database"
 	"travel-app-backend/internal/hotels"
+	pkgcfg "travel-app-backend/internal/pkg/config"
 	"travel-app-backend/internal/pkg/external"
 	"travel-app-backend/internal/places"
 )
@@ -67,6 +68,9 @@ func main() {
 	}
 	if err := database.Seed(ctx, pool); err != nil {
 		fail("seed: %v", err)
+	}
+	if err := database.PromoteAdmins(ctx, pool, pkgcfg.ParseAdminEmails(os.Getenv("ADMIN_EMAILS"))); err != nil {
+		fail("rbac: %v", err)
 	}
 
 	placesSvc := places.NewService(places.NewPostgresRepository(pool))
